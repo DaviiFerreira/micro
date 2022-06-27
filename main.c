@@ -134,13 +134,14 @@
 int tempo;
 int botao=0;
 
+//---------------------------------- variaves de controle estados atuais display 7 seg -------------------------//
 int como_ta[]= {0,0,0,0};
 int ql_vez = 0 ;
 int jafoi1 = 0 ;
 int jafoi2 = 0 ;
 int jafoi3 = 0 ;
 int jafoi4 = 0 ;
-
+//----------------------------------  fim variaveis controle estados atuais display 7 seg -------------------------//
 
 void destrava_pino(uint32_t portal_base){
     ESC_REG(portal_base + GPIO_O_LOCK) = GPIO_LOCK_KEY;
@@ -151,7 +152,7 @@ void bloqueia_GPIO(uint32_t portal){
     ESC_REG(portal + GPIO_O_CR) = 0;
 }
 
-//---------------------------------- habilita interup portal f E B -------------------------//
+//---------------------------------- habilita botoes e interupção portal f E B -------------------------//
 void habilita_portas_matriz_botoes(void){
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOB);
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
@@ -176,45 +177,14 @@ void habilita_portas_matriz_botoes(void){
        GPIOIntEnable(GPIO_PORTB_BASE, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_5);
        IntMasterEnable();
 }
-
-/* ======================================================================== */
-int leitura_matriz_botao(void){
-  uint32_t portal_linhas[4] = {GPIO_PORTF_BASE, GPIO_PORTB_BASE, GPIO_PORTB_BASE, GPIO_PORTB_BASE};
-  uint32_t portal_colunas[4] = {GPIO_PORTF_BASE, GPIO_PORTF_BASE, GPIO_PORTF_BASE, GPIO_PORTF_BASE};
-  uint32_t pinos_linhas[4] = {GPIO_PIN_4, GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_5};
-  uint32_t pinos_colunas[4] = {GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_2, GPIO_PIN_3};
-  uint32_t ui32Loop;
-
-  int i=0,j=0;
-  int retorno=0;
-  for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) {  }
-  GPIOPinWrite(portal_colunas[i], pinos_colunas[0]|pinos_colunas[1]|pinos_colunas[2]|pinos_colunas[3], ~(pinos_colunas[i]));
-  if(GPIOPinRead(portal_linhas[j], pinos_linhas[j]) == 0x00 && GPIOPinRead(portal_linhas[j+1], pinos_linhas[j+1]) == 0x00){
-      return -5;
-  }
-  i=3;
-  j=2;
-  GPIOPinWrite(portal_colunas[i], pinos_colunas[0]|pinos_colunas[1]|pinos_colunas[2]|pinos_colunas[3], ~(pinos_colunas[i]));
-  if(GPIOPinRead(portal_linhas[j], pinos_linhas[j]) == 0x00 && GPIOPinRead(portal_linhas[j+1], pinos_linhas[j+1]) == 0x00){
-      return -3;
-  }
-  for ( i = 0; i < 4; i++){
-    GPIOPinWrite(portal_colunas[i], pinos_colunas[0]|pinos_colunas[1]|pinos_colunas[2]|pinos_colunas[3], ~(pinos_colunas[i]));
-    for ( j = 0; j < 4; j++){
-       if(GPIOPinRead(portal_linhas[j], pinos_linhas[j]) == 0x00 ){
-           retorno = j*4 + i;
-           return retorno;
-       }
-
-    }
-  }
-  return retorno-1;
-}
+//---------------------------------- fim habilita botoes e interupção portal f E B -------------------------//
 
 void EscritaPinosPortal (uint32_t PortalBase, uint8_t Pino, uint8_t Valor)
 {
     ESC_REG(PortalBase + (GPIO_OS_DATA + (Pino << 2))) = Valor;
 }
+
+//----------------------------------escreve em uma posição "digito" um valor "valor" -------------------------//
 void EscreveDisplay (uint8_t Digito, uint8_t valor)
 {
     switch (Digito)
@@ -318,6 +288,7 @@ void EscreveDisplay (uint8_t Digito, uint8_t valor)
     }
 
 }
+//----------------------------------fim escreve em uma posição "digito" um valor "valor" -------------------------//
 void HabilitaPortal (uint8_t HabPortalX)
 {
     ESC_REG(SYSCTL_RCGCGPIO) |= HabPortalX;
@@ -346,13 +317,10 @@ void ConfiguraPinoEntrada (uint32_t PortalBase, uint8_t Pino)
 
 }
 
-int32_t LeituraPinosPortal (uint32_t PortalBase, uint8_t Pino)
-{
-    return(ESC_REG(PortalBase + (GPIO_OS_DATA + (Pino << 2))));
-}
-
-
+//----------------------------------escreve over no display de 7 seg e n aceita mais nenhuma entrada desabilitando a interupção-------------------------//
 void faz_over(void){
+    IntDisable(INT_GPIOF);
+    IntDisable(INT_GPIOB);
     while(1){
         volatile uint32_t ui32Loop;
         for(ui32Loop = 0; ui32Loop < 2000; ui32Loop++) {  }
@@ -377,6 +345,10 @@ void faz_over(void){
          EscritaPinosPortal(GPIOPortC_base, Pino_4|Pino_5|Pino_6|Pino_7, sseg_R);
     }
 }
+//----------------------------------fim escreve over no display de 7 seg e n aceita mais nenhuma entrada desabilitando a interupção-------------------------//
+
+
+//----------------------------------converte decimal p hexadecimal -------------------------//
 void conversao_decimal_hexa(void) // decimal --> hexa
 {
     int numero;
@@ -392,8 +364,38 @@ void conversao_decimal_hexa(void) // decimal --> hexa
     como_ta[1] = (numero>>8)&0x0F;//(numero %(16*16*16)-como_ta[0]-como_ta[1])/(16*16); //
     como_ta[0] = (numero>>12)&0x0F;//(numero-como_ta[0]-como_ta[1]-como_ta[2])/(16*16*16); //
 
+    if (como_ta[0]==0){
+            ql_vez=100;
+            jafoi4=0;
+        }
+        if (como_ta[1]==0 && como_ta[0]==0){
+               ql_vez=71;
+               jafoi4=0;
+               jafoi3=0;
+           }
+        if (como_ta[2]==0 && como_ta[1]==0 && como_ta[0]==0){
+               ql_vez=40;
+               jafoi4=0;
+               jafoi3=0;
+               jafoi2=0;
+           }
+        if (como_ta[3]==0 && como_ta[2]==0 && como_ta[1]==0 && como_ta[0]==0){
+                   ql_vez=0;
+                   jafoi4=0;
+                   jafoi3=0;
+                   jafoi2=0;
+                   jafoi1=0;
+               }
+
+
 }
+//---------------------------------- fim converte decimal p hexadecimal -------------------------//
+
+
+//----------------------------------escreve erro no display de 7 seg e n aceita mais nenhuma entrada desabilitando a interupção-------------------------//
 void faz_erro(void){
+    IntDisable(INT_GPIOF);
+    IntDisable(INT_GPIOB);
     while(1){
         volatile uint32_t ui32Loop;
         for(ui32Loop = 0; ui32Loop < 2000; ui32Loop++) {  }
@@ -418,6 +420,10 @@ void faz_erro(void){
          EscritaPinosPortal(GPIOPortC_base, Pino_4|Pino_5|Pino_6|Pino_7, sseg_0);
     }
 }
+//----------------------------------fim escreve erro no display de 7 seg e n aceita mais nenhuma entrada desabilitando a interupção-------------------------//
+
+
+//----------------------------------converte hexadecimal para decimal-------------------------//
 void conversao_hexa_decimal(void) // hexa --> decimal numero max 270F ~ 9999
 {
     int numero;
@@ -442,7 +448,10 @@ void conversao_hexa_decimal(void) // hexa --> decimal numero max 270F ~ 9999
 
 
 }
+//----------------------------------fim converte hexadecimal para decimal-------------------------//
 
+
+//----------------------------------arruma o vetor pelas variaveis de estados dele--------------------------//
 void arruma_o_certo(int novo_val){
     ql_vez++;
     if (ql_vez<=10 && !jafoi1){
@@ -471,6 +480,10 @@ void arruma_o_certo(int novo_val){
         faz_erro();
     }
     }
+
+//----------------------------------fim arruma o vetor pelas variaveis de estados dele-------------------------//
+
+//---------------------------------- arruma o display de 7 seg de acordo com o vetor de estados dele-------------------------//
 void escreve_certo(){
     volatile uint32_t ui32Loop;
     for(ui32Loop = 0; ui32Loop < 2000; ui32Loop++) {  }
@@ -483,7 +496,10 @@ void escreve_certo(){
     EscreveDisplay (4,como_ta[3]);
 
 }
+//----------------------------------fim arruma o display de 7 seg de acordo com o vetor de estados dele-------------------------//
 
+
+//----------------------------------função que entende o que fazer de acordo com a leitura de botão-------------------------//
 void controla_tudo(int botao){
     volatile uint32_t ui32Loop;
 
@@ -507,18 +523,47 @@ void controla_tudo(int botao){
 
 
 }
-void IntPortalF (void){
-    uint32_t ui32Loop;
-   // for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) { }
-    int botao = leitura_matriz_botao();
-      controla_tudo(botao);
-}
+//----------------------------------fim função que entende o que fazer de acordo com a leitura de botão-------------------------//
+
+//----------------------------------função de interção para ambos os portais, como foi colocado na tm4c-------------------------//
 void IntPortalB (void){
     uint32_t ui32Loop;
-   // for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) { }
-    int botao = leitura_matriz_botao();
-      controla_tudo(botao);
+    for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) { }
+    int botao = -1;
+    uint32_t portal_linhas[4] = {GPIO_PORTF_BASE, GPIO_PORTB_BASE, GPIO_PORTB_BASE, GPIO_PORTB_BASE};
+      uint32_t portal_colunas[4] = {GPIO_PORTF_BASE, GPIO_PORTF_BASE, GPIO_PORTF_BASE, GPIO_PORTF_BASE};
+      uint32_t pinos_linhas[4] = {GPIO_PIN_4, GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_5};
+      uint32_t pinos_colunas[4] = {GPIO_PIN_0, GPIO_PIN_1, GPIO_PIN_2, GPIO_PIN_3};
+      int i=0,j=0;
+      //for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) {  }
+      GPIOPinWrite(portal_colunas[i], pinos_colunas[0]|pinos_colunas[1]|pinos_colunas[2]|pinos_colunas[3], ~(pinos_colunas[i]));
+      if(GPIOPinRead(portal_linhas[j], pinos_linhas[j]) == 0x00 && GPIOPinRead(portal_linhas[j+1], pinos_linhas[j+1]) == 0x00){
+          controla_tudo(-5);
+          for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) { }
+      }
+      i=3;
+      j=2;
+      GPIOPinWrite(portal_colunas[i], pinos_colunas[0]|pinos_colunas[1]|pinos_colunas[2]|pinos_colunas[3], ~(pinos_colunas[i]));
+      if(GPIOPinRead(portal_linhas[j], pinos_linhas[j]) == 0x00 && GPIOPinRead(portal_linhas[j+1], pinos_linhas[j+1]) == 0x00){
+          controla_tudo(-3);
+          for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) { }
+      }
+      for ( i = 0; i < 4; i++){
+        GPIOPinWrite(portal_colunas[i], pinos_colunas[0]|pinos_colunas[1]|pinos_colunas[2]|pinos_colunas[3], ~(pinos_colunas[i]));
+        for ( j = 0; j < 4; j++){
+           if(GPIOPinRead(portal_linhas[j], pinos_linhas[j]) == 0x00 ){
+               botao = j*4 + i;
+               controla_tudo(botao);
+               for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) { }
+           }
+
+        }
+      }
+     controla_tudo(botao);
+
+
 }
+//----------------------------------fim função de interção para ambos os portais, como foi colocado na tm4c-------------------------//
 
 
   int main(void){
@@ -534,7 +579,7 @@ void IntPortalB (void){
     for(ui32Loop = 0; ui32Loop < 200; ui32Loop++) { }
 
     // Habilita o pino 3 do portal F, configura como saída digital
-    ConfiguraPinoSaida (GPIOPortF_base, Pino_3);
+    ConfiguraPinoSaida (GPIOPortF_base, Pino_0|Pino_3);
     ConfiguraPinoSaida (GPIOPortE_base, Pino_0|Pino_1|Pino_2|Pino_3);
     ConfiguraPinoSaida (GPIOPortD_base, Pino_2|Pino_3);
     ConfiguraPinoSaida (GPIOPortC_base, Pino_4|Pino_5|Pino_6|Pino_7);
